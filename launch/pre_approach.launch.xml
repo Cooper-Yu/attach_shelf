@@ -3,7 +3,7 @@
   <arg name="degrees" default="-90.0"/>
 
   <node pkg="attach_shelf" exec="pre_approach" name="pre_approach" output="screen">
-    <param name="obstacle" value="$(var obstacle)"/>
-    <param name="degrees" value="$(var degrees)"/>
+    <param name="obstacle" value="$(var obstacle)" type="float"/>
+    <param name="degrees" value="$(var degrees)" type="float"/>
   </node>
 </launch>
