@@ -65,9 +65,10 @@ private:
   {
     
     std::vector<double> valid_ranges;
-    // TODO(learner): implement front-window extraction:
+
     // Convert half window to radians.
     double half_window = window_degrees / 2 * kPi / 180;
+    
     // Loop angle from -half_window to +half_window.
     for (double i = -half_window; i < half_window; i += scan.angle_increment)
     {
@@ -136,18 +137,7 @@ private:
 
       // MOVING_FORWARD -> STOP_BEFORE_ROTATE when front_distance <= obstacle
       case State::MOVING_FORWARD: {
-        if (!front_distance_.has_value()) {
-          enter_safe_stop("front distance is unavailable");
-          return;
-        }
-
-        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
-          enter_safe_stop("latest valid scan is older than 1.0 seconds");
-          return;
-        }
-
-        if (invalid_scan_count_ >= 10) {
-          enter_safe_stop("too many consecutive invalid scan windows");
+        if (!check_runtime_safety()) {
           return;
         }
 
@@ -164,18 +154,7 @@ private:
         
       // STOP_BEFORE_ROTATE -> ROTATING or DONE
       case State::STOP_BEFORE_ROTATE: {
-        if (!front_distance_.has_value()) {
-          enter_safe_stop("front distance is unavailable");
-          return;
-        }
-
-        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
-          enter_safe_stop("latest valid scan is older than 1.0 seconds");
-          return;
-        }
-
-        if (invalid_scan_count_ >= 10) {
-          enter_safe_stop("too many consecutive invalid scan windows");
+        if (!check_runtime_safety()) {
           return;
         }
 
@@ -198,18 +177,7 @@ private:
 
       // ROTATING -> DONE after rotate_time_
       case State::ROTATING: {
-        if (!front_distance_.has_value()) {
-          enter_safe_stop("front distance is unavailable");
-          return;
-        }
-
-        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
-          enter_safe_stop("latest valid scan is older than 1.0 seconds");
-          return;
-        }
-
-        if (invalid_scan_count_ >= 10) {
-          enter_safe_stop("too many consecutive invalid scan windows");
+        if (!check_runtime_safety()) {
           return;
         }
 
@@ -224,7 +192,7 @@ private:
         
         return;
       }
-      
+
       // SAFE_STOP and DONE should publish_stop().
       case State::SAFE_STOP: {
         publish_stop();
@@ -237,6 +205,26 @@ private:
       }
     }
       
+  }
+
+  bool check_runtime_safety()
+  {
+    if (!front_distance_.has_value()) {
+      enter_safe_stop("front distance is unavailable");
+      return false;
+    }
+
+    if ((now() - last_valid_scan_time_).seconds() > 1.0) {
+      enter_safe_stop("latest valid scan is older than 1.0 seconds");
+      return false;
+    }
+
+    if (invalid_scan_count_ >= 10) {
+      enter_safe_stop("too many consecutive invalid scan windows");
+      return false;
+    }
+
+    return true;
   }
 
   void publish_stop()
