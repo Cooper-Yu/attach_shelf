@@ -168,8 +168,15 @@ private:
 
       // ROTATING -> DONE after rotate_time_
       case State::ROTATING: {
-        publish_rotate();
-        state_ = State::DONE;
+        double elapsed = (this->now() -rotation_start_time_).seconds();
+        if (elapsed < rotate_time_) {
+          publish_rotate();
+        }
+        else {
+          publish_stop();
+          state_ = State::DONE;
+        }
+        
         return;
       }
       // SAFE_STOP and DONE should publish_stop().
