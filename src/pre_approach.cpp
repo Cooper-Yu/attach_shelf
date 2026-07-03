@@ -43,7 +43,11 @@ public:
       100ms,
       std::bind(&PreApproach::timer_callback, this));
 
-    RCLCPP_INFO(get_logger(), "pre_approach skeleton started. Fill TODOs learner-first.");
+    RCLCPP_INFO(
+      get_logger(),
+      "pre_approach started: obstacle=%.2f m, degrees=%.2f",
+      obstacle_,
+      degrees_);
   }
 
 private:

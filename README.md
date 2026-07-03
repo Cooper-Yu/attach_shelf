@@ -1,16 +1,16 @@
 # attach_shelf
 
-Checkpoint 9 training package for Robot Developer Masterclass.
+ROS 2 package for the shelf pre-approach step in Robot Developer Masterclass.
 
-## Current Goal
+## Overview
 
-Implement `pre_approach` learner-first:
+The `pre_approach` node:
 
-- subscribe to `/scan`;
-- extract a valid front-window distance from `sensor_msgs/msg/LaserScan`;
-- publish `/cmd_vel` as `geometry_msgs/msg/Twist`;
-- read `obstacle` and `degrees` parameters from launch;
-- use a timer-driven state machine.
+- subscribes to `/scan`;
+- extracts the closest valid distance in a front LaserScan window;
+- drives forward until the robot reaches the configured `obstacle` distance;
+- stops briefly, rotates by the configured `degrees`, then stops;
+- publishes velocity commands on `/cmd_vel`.
 
 ## Build
 
@@ -27,10 +27,7 @@ source install/setup.bash
 ros2 launch attach_shelf pre_approach.launch.xml obstacle:=0.4 degrees:=-90
 ```
 
-## Learner TODOs
+## Parameters
 
-1. Implement `get_front_distance`.
-2. Implement `timer_callback` state machine.
-3. Add parameter validation and safe-stop reasons.
-4. Build and fix compiler errors.
-5. Verify with `ros2 param get`, `/cmd_vel`, and simulated `/scan` or the checkpoint simulation.
+- `obstacle`: target stopping distance in meters.
+- `degrees`: rotation angle after stopping. Negative values rotate clockwise.
