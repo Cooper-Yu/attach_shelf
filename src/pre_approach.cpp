@@ -136,6 +136,21 @@ private:
 
       // MOVING_FORWARD -> STOP_BEFORE_ROTATE when front_distance <= obstacle
       case State::MOVING_FORWARD: {
+        if (!front_distance_.has_value()) {
+          enter_safe_stop("front distance is unavailable");
+          return;
+        }
+
+        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
+          enter_safe_stop("latest valid scan is older than 1.0 seconds");
+          return;
+        }
+
+        if (invalid_scan_count_ >= 10) {
+          enter_safe_stop("too many consecutive invalid scan windows");
+          return;
+        }
+
         publish_forward();
          
         if (front_distance_.value() <= obstacle_) {
@@ -149,6 +164,21 @@ private:
         
       // STOP_BEFORE_ROTATE -> ROTATING or DONE
       case State::STOP_BEFORE_ROTATE: {
+        if (!front_distance_.has_value()) {
+          enter_safe_stop("front distance is unavailable");
+          return;
+        }
+
+        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
+          enter_safe_stop("latest valid scan is older than 1.0 seconds");
+          return;
+        }
+
+        if (invalid_scan_count_ >= 10) {
+          enter_safe_stop("too many consecutive invalid scan windows");
+          return;
+        }
+
         publish_stop();
         double elapsed_stop = (this->now() - stop_start_time_).seconds();
         
@@ -168,6 +198,21 @@ private:
 
       // ROTATING -> DONE after rotate_time_
       case State::ROTATING: {
+        if (!front_distance_.has_value()) {
+          enter_safe_stop("front distance is unavailable");
+          return;
+        }
+
+        if ((now() - last_valid_scan_time_).seconds() > 1.0) {
+          enter_safe_stop("latest valid scan is older than 1.0 seconds");
+          return;
+        }
+
+        if (invalid_scan_count_ >= 10) {
+          enter_safe_stop("too many consecutive invalid scan windows");
+          return;
+        }
+
         double elapsed = (this->now() -rotation_start_time_).seconds();
         if (elapsed < rotate_time_) {
           publish_rotate();
@@ -179,6 +224,7 @@ private:
         
         return;
       }
+      
       // SAFE_STOP and DONE should publish_stop().
       case State::SAFE_STOP: {
         publish_stop();
