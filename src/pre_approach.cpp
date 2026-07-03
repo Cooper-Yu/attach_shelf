@@ -22,7 +22,8 @@ public:
     rotation_scale_(0.5),
     rotate_time_(0.0),
     invalid_scan_count_(0),
-    state_(State::WAITING_FOR_SCAN)
+    state_(State::WAITING_FOR_SCAN),
+    shutdown_requested_(false)
   {
     declare_parameter<double>("obstacle", obstacle_);
     declare_parameter<double>("degrees", degrees_);
@@ -243,6 +244,7 @@ private:
 
       case State::DONE: {
         publish_stop();
+        request_shutdown("pre_approach complete");
         return;
       }
     }
@@ -302,6 +304,17 @@ private:
     publish_stop();
   }
 
+  void request_shutdown(const std::string & reason)
+  {
+    if (shutdown_requested_) {
+      return;
+    }
+
+    shutdown_requested_ = true;
+    RCLCPP_INFO(get_logger(), "%s", reason.c_str());
+    rclcpp::shutdown();
+  }
+
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
@@ -321,6 +334,7 @@ private:
   rclcpp::Time rotation_start_time_;
   rclcpp::Time stop_start_time_;
   std::string safety_stop_reason_;
+  bool shutdown_requested_;
 };
 
 int main(int argc, char ** argv)

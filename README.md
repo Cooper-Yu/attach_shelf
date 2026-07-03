@@ -27,6 +27,13 @@ source install/setup.bash
 ros2 launch attach_shelf pre_approach.launch.xml obstacle:=0.4 degrees:=-90
 ```
 
+This launch file starts both `pre_approach` and RViz with the package RViz config.
+For headless testing, disable RViz:
+
+```bash
+ros2 launch attach_shelf pre_approach.launch.xml use_rviz:=false obstacle:=0.4 degrees:=-90
+```
+
 ## Parameters
 
 - `obstacle`: target stopping distance in meters.
@@ -34,3 +41,4 @@ ros2 launch attach_shelf pre_approach.launch.xml obstacle:=0.4 degrees:=-90
 - `forward_speed`: forward velocity in meters per second. Default: `0.4`.
 - `angular_speed`: rotation velocity in radians per second. Default: `0.5`.
 - `rotation_scale`: multiplier applied to the open-loop rotation time. Default: `0.5`.
+- `use_rviz`: whether to start RViz. Default: `true`.
