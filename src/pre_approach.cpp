@@ -63,17 +63,39 @@ private:
     double window_degrees,
     double & front_distance)
   {
-    (void)scan;
-    (void)window_degrees;
-    (void)front_distance;
-
+    
+    std::vector<double> valid_ranges;
     // TODO(learner): implement front-window extraction:
-    // 1. Convert half window to radians.
-    // 2. Loop angle from -half_window to +half_window.
-    // 3. Convert angle to index using angle_min and angle_increment.
-    // 4. Skip out-of-range indices.
-    // 5. Skip non-finite or out-of-range distances.
-    // 6. Return the minimum valid distance.
+    // Convert half window to radians.
+    double half_window = window_degrees / 2 * kPi / 180;
+    // Loop angle from -half_window to +half_window.
+    for (double i = -half_window; i < half_window; i += scan.angle_increment)
+    {
+      // Convert angle to index using angle_min and angle_increment.
+      int index = static_cast<int>(std::round((i - scan.angle_min)/scan.angle_increment));
+      
+      // Skip out-of-range indices.
+      if (index < 0 || index >= static_cast<int>(scan.ranges.size())) {
+        continue;
+      }
+      
+      double distance = scan.ranges[index];
+      
+      // Skip non-finite or out-of-range distances.
+      if (!std::isfinite(distance) || distance < scan.range_min || distance > scan.range_max) {
+        continue;
+      }
+
+      valid_ranges.push_back(distance);
+      
+    }
+
+    // Use the minimum valid distance as front_distance
+    if (!valid_ranges.empty()) {
+      front_distance = *std::min_element(valid_ranges.begin(), valid_ranges.end());
+      return true;
+    }
+    
     return false;
   }
 
@@ -92,13 +114,64 @@ private:
 
   void timer_callback()
   {
-    // TODO(learner): implement the state machine:
-    // WAITING_FOR_SCAN -> MOVING_FORWARD or STOP_BEFORE_ROTATE
-    // MOVING_FORWARD -> STOP_BEFORE_ROTATE when front_distance <= obstacle
-    // STOP_BEFORE_ROTATE -> ROTATING or DONE
-    // ROTATING -> DONE after rotate_time_
-    // SAFE_STOP and DONE should publish_stop().
-    publish_stop();
+    // implement the state machine:
+    switch(state_) {
+      // WAITING_FOR_SCAN -> MOVING_FORWARD or STOP_BEFORE_ROTATE
+      case State::WAITING_FOR_SCAN: {  
+        publish_stop();
+
+        if (!front_distance_.has_value()) {
+          return;
+        }
+
+        if (front_distance_.value() > obstacle_) {
+          state_ = State::MOVING_FORWARD;
+          return;
+        }
+
+        stop_start_time_ = this->now();
+        state_ = State::STOP_BEFORE_ROTATE;
+        return;
+      }
+
+      // MOVING_FORWARD -> STOP_BEFORE_ROTATE when front_distance <= obstacle
+      case State::MOVING_FORWARD: {
+        publish_forward();
+         
+        if (front_distance_.value() <= obstacle_) {
+          publish_stop();
+          stop_start_time_ = this->now();
+          state_ = State::STOP_BEFORE_ROTATE;
+        }
+          
+        return;
+      }
+        
+      // STOP_BEFORE_ROTATE -> ROTATING or DONE
+      case State::STOP_BEFORE_ROTATE: {
+        publish_stop();
+        state_ =  State::ROTATING;
+        return;
+      }
+
+      // ROTATING -> DONE after rotate_time_
+      case State::ROTATING: {
+        publish_rotate();
+        state_ = State::DONE;
+        return;
+      }
+      // SAFE_STOP and DONE should publish_stop().
+      case State::SAFE_STOP: {
+        publish_stop();
+        return;
+      }
+
+      case State::DONE: {
+        publish_stop();
+        return;
+      }
+    }
+      
   }
 
   void publish_stop()
