@@ -150,6 +150,18 @@ private:
       // STOP_BEFORE_ROTATE -> ROTATING or DONE
       case State::STOP_BEFORE_ROTATE: {
         publish_stop();
+        double elapsed_stop = (this->now() - stop_start_time_).seconds();
+        
+        if (elapsed_stop < 0.2) {
+          return;
+        }
+
+        if (std::abs(degrees_) < 1e-6) {
+          state_ = State::DONE;
+          return;
+        }
+
+        rotation_start_time_ = this->now();
         state_ =  State::ROTATING;
         return;
       }
