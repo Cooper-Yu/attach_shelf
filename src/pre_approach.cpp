@@ -17,20 +17,55 @@ public:
   : Node("pre_approach"),
     obstacle_(0.4),
     degrees_(-90.0),
-    forward_speed_(0.2),
+    forward_speed_(0.4),
     angular_speed_(0.5),
+    rotation_scale_(0.5),
     rotate_time_(0.0),
     invalid_scan_count_(0),
     state_(State::WAITING_FOR_SCAN)
   {
     declare_parameter<double>("obstacle", obstacle_);
     declare_parameter<double>("degrees", degrees_);
+    declare_parameter<double>("forward_speed", forward_speed_);
+    declare_parameter<double>("angular_speed", angular_speed_);
+    declare_parameter<double>("rotation_scale", rotation_scale_);
 
     obstacle_ = get_parameter("obstacle").as_double();
     degrees_ = get_parameter("degrees").as_double();
+    forward_speed_ = get_parameter("forward_speed").as_double();
+    angular_speed_ = get_parameter("angular_speed").as_double();
+    rotation_scale_ = get_parameter("rotation_scale").as_double();
+
+    if (obstacle_ <= 0.0) {
+      state_ = State::SAFE_STOP;
+      RCLCPP_ERROR(get_logger(), "Invalid obstacle parameter: %.3f", obstacle_);
+    }
+
+    if (forward_speed_ <= 0.0) {
+      state_ = State::SAFE_STOP;
+      RCLCPP_ERROR(get_logger(), "Invalid forward_speed parameter: %.3f", forward_speed_);
+    }
+
+    if (std::abs(degrees_) > 1e-6 && std::abs(angular_speed_) < 1e-6) {
+      state_ = State::SAFE_STOP;
+      RCLCPP_ERROR(
+        get_logger(),
+        "Invalid angular_speed parameter: %.3f while degrees is %.3f",
+        angular_speed_,
+        degrees_);
+    }
+
+    if (rotation_scale_ <= 0.0) {
+      state_ = State::SAFE_STOP;
+      RCLCPP_ERROR(get_logger(), "Invalid rotation_scale parameter: %.3f", rotation_scale_);
+    }
 
     const double target_angle_rad = degrees_ * kPi / 180.0;
-    rotate_time_ = std::abs(target_angle_rad) / std::abs(angular_speed_);
+    if (std::abs(target_angle_rad) < 1e-6) {
+      rotate_time_ = 0.0;
+    } else {
+      rotate_time_ = std::abs(target_angle_rad) / std::abs(angular_speed_) * rotation_scale_;
+    }
 
     cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
@@ -45,9 +80,12 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "pre_approach started: obstacle=%.2f m, degrees=%.2f",
+      "pre_approach started: obstacle=%.2f m, degrees=%.2f, forward_speed=%.2f m/s, angular_speed=%.2f rad/s, rotation_scale=%.2f",
       obstacle_,
-      degrees_);
+      degrees_,
+      forward_speed_,
+      angular_speed_,
+      rotation_scale_);
   }
 
 private:
@@ -272,6 +310,7 @@ private:
   double degrees_;
   double forward_speed_;
   double angular_speed_;
+  double rotation_scale_;
   double rotate_time_;
 
   std::optional<double> front_distance_;

@@ -31,3 +31,6 @@ ros2 launch attach_shelf pre_approach.launch.xml obstacle:=0.4 degrees:=-90
 
 - `obstacle`: target stopping distance in meters.
 - `degrees`: rotation angle after stopping. Negative values rotate clockwise.
+- `forward_speed`: forward velocity in meters per second. Default: `0.4`.
+- `angular_speed`: rotation velocity in radians per second. Default: `0.5`.
+- `rotation_scale`: multiplier applied to the open-loop rotation time. Default: `0.5`.
