@@ -6,14 +6,12 @@
   <arg name="rotation_scale" default="0.5"/>
   <arg name="use_rviz" default="true"/>
 
-  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" if="$(var use_rviz)"
-        args="-d $(find-pkg-share attach_shelf)/rviz/pre_approach.rviz"/>
-
-  <node pkg="attach_shelf" exec="pre_approach" name="pre_approach" output="screen" on_exit="shutdown">
-    <param name="obstacle" value="$(var obstacle)" type="float"/>
-    <param name="degrees" value="$(var degrees)" type="float"/>
-    <param name="forward_speed" value="$(var forward_speed)" type="float"/>
-    <param name="angular_speed" value="$(var angular_speed)" type="float"/>
-    <param name="rotation_scale" value="$(var rotation_scale)" type="float"/>
-  </node>
+  <include file="$(find-pkg-share attach_shelf)/launch/pre_approach.launch.py">
+    <arg name="obstacle" value="$(var obstacle)"/>
+    <arg name="degrees" value="$(var degrees)"/>
+    <arg name="forward_speed" value="$(var forward_speed)"/>
+    <arg name="angular_speed" value="$(var angular_speed)"/>
+    <arg name="rotation_scale" value="$(var rotation_scale)"/>
+    <arg name="use_rviz" value="$(var use_rviz)"/>
+  </include>
 </launch>
