@@ -61,6 +61,8 @@ public:
       RCLCPP_ERROR(get_logger(), "Invalid rotation_scale parameter: %.3f", rotation_scale_);
     }
 
+    // The rotation is open-loop: publish angular velocity for a calibrated duration.
+    // rotation_scale compensates for the simulator's actual yaw response.
     const double target_angle_rad = degrees_ * kPi / 180.0;
     if (std::abs(target_angle_rad) < 1e-6) {
       rotate_time_ = 0.0;
@@ -106,35 +108,31 @@ private:
     double window_degrees,
     double & front_distance)
   {
-    
     std::vector<double> valid_ranges;
 
-    // Convert half window to radians.
+    // Use a small window around 0 rad instead of a single ray to reduce noise.
     double half_window = window_degrees / 2 * kPi / 180;
-    
-    // Loop angle from -half_window to +half_window.
+
     for (double i = -half_window; i < half_window; i += scan.angle_increment)
     {
-      // Convert angle to index using angle_min and angle_increment.
-      int index = static_cast<int>(std::round((i - scan.angle_min)/scan.angle_increment));
-      
-      // Skip out-of-range indices.
+      // Convert the desired angle into the matching ranges[] index.
+      int index = static_cast<int>(std::round((i - scan.angle_min) / scan.angle_increment));
+
       if (index < 0 || index >= static_cast<int>(scan.ranges.size())) {
         continue;
       }
-      
+
       double distance = scan.ranges[index];
-      
-      // Skip non-finite or out-of-range distances.
+
+      // LaserScan can contain inf/nan or readings outside the sensor's valid range.
       if (!std::isfinite(distance) || distance < scan.range_min || distance > scan.range_max) {
         continue;
       }
 
       valid_ranges.push_back(distance);
-      
     }
 
-    // Use the minimum valid distance as front_distance
+    // The closest valid ray in the front window is the conservative obstacle distance.
     if (!valid_ranges.empty()) {
       front_distance = *std::min_element(valid_ranges.begin(), valid_ranges.end());
       return true;
@@ -147,6 +145,8 @@ private:
   {
     double distance = 0.0;
 
+    // Keep the last valid front distance so the timer callback can make one
+    // consistent control decision per cycle.
     if (get_front_distance(*msg, 10.0, distance)) {
       front_distance_ = distance;
       last_valid_scan_time_ = now();
@@ -158,9 +158,7 @@ private:
 
   void timer_callback()
   {
-    // implement the state machine:
     switch(state_) {
-      // WAITING_FOR_SCAN -> MOVING_FORWARD or STOP_BEFORE_ROTATE
       case State::WAITING_FOR_SCAN: {  
         publish_stop();
 
@@ -184,6 +182,7 @@ private:
           return;
         }
 
+        // Move forward until the front obstacle reaches the requested distance.
         publish_forward();
          
         if (front_distance_.value() <= obstacle_) {
@@ -201,6 +200,7 @@ private:
           return;
         }
 
+        // Publish zero velocity for a short settling window before rotating.
         publish_stop();
         double elapsed_stop = (this->now() - stop_start_time_).seconds();
         
@@ -224,7 +224,8 @@ private:
           return;
         }
 
-        double elapsed = (this->now() -rotation_start_time_).seconds();
+        // Continue publishing angular velocity; a single Twist message is not enough.
+        double elapsed = (this->now() - rotation_start_time_).seconds();
         if (elapsed < rotate_time_) {
           publish_rotate();
         }
@@ -244,6 +245,7 @@ private:
 
       case State::DONE: {
         publish_stop();
+        // End the launch cleanly after the final stop command has been sent.
         request_shutdown("pre_approach complete");
         return;
       }
